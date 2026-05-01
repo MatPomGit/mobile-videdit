@@ -312,7 +312,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle(R.string.app_name)
             .setMessage(getString(R.string.success_export, outputPath))
             .setPositiveButton(R.string.ok, null)
-            .setNeutralButton("Udostępnij") { _, _ ->
+            .setNeutralButton(R.string.share_video) { _, _ ->
                 shareFile(outputPath)
             }
             .show()
@@ -338,7 +338,7 @@ class MainActivity : AppCompatActivity() {
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        startActivity(Intent.createChooser(intent, "Udostępnij video"))
+        startActivity(Intent.createChooser(intent, getString(R.string.share_chooser_title)))
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────

@@ -2,7 +2,6 @@ package com.mobilevidedit.app
 
 import android.content.Context
 import com.arthenica.ffmpegkit.FFmpegKit
-import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.arthenica.ffmpegkit.FFprobeKit
 import com.arthenica.ffmpegkit.ReturnCode
 import java.io.File
@@ -48,7 +47,7 @@ class VideoProcessor(private val context: Context) {
             val output = session.allLogsAsString ?: ""
             formatProbeOutput(output, path)
         } catch (e: Exception) {
-            "Błąd analizy pliku: ${e.message}"
+            context.getString(R.string.error_probe, e.message)
         }
     }
 
@@ -112,11 +111,11 @@ class VideoProcessor(private val context: Context) {
             if (ReturnCode.isSuccess(session.returnCode)) {
                 ProcessingState.Success(output.absolutePath)
             } else {
-                val logs = session.allLogsAsString ?: "Nieznany błąd"
-                ProcessingState.Error("FFmpeg error: $logs")
+                val logs = session.allLogsAsString ?: context.getString(R.string.error_unknown)
+                ProcessingState.Error(context.getString(R.string.error_ffmpeg, logs))
             }
         } catch (e: Exception) {
-            ProcessingState.Error("Wyjątek FFmpeg: ${e.message}")
+            ProcessingState.Error(context.getString(R.string.error_ffmpeg_exception, e.message))
         }
     }
 
@@ -139,12 +138,12 @@ class VideoProcessor(private val context: Context) {
             if (ReturnCode.isSuccess(session.returnCode)) {
                 ProcessingState.Success(output.absolutePath)
             } else {
-                val logs = session.allLogsAsString ?: "Nieznany błąd"
-                ProcessingState.Error("FFmpeg merge error: $logs")
+                val logs = session.allLogsAsString ?: context.getString(R.string.error_unknown)
+                ProcessingState.Error(context.getString(R.string.error_ffmpeg_merge, logs))
             }
         } catch (e: Exception) {
             listFile.delete()
-            ProcessingState.Error("Wyjątek merge: ${e.message}")
+            ProcessingState.Error(context.getString(R.string.error_merge_exception, e.message))
         }
     }
 

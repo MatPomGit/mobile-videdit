@@ -39,4 +39,12 @@
     <string name="ffmpeg_not_available">FFmpeg niedostępny</string>
     <string name="trim_end_hint">Domyślnie: koniec nagrania</string>
     <string name="duration_label">Czas trwania: %1$.2f s</string>
+    <string name="share_video">Udostępnij video</string>
+    <string name="share_chooser_title">Udostępnij video</string>
+    <string name="error_probe">Błąd analizy pliku: %1$s</string>
+    <string name="error_ffmpeg">FFmpeg error: %1$s</string>
+    <string name="error_ffmpeg_exception">Wyjątek FFmpeg: %1$s</string>
+    <string name="error_ffmpeg_merge">FFmpeg merge error: %1$s</string>
+    <string name="error_merge_exception">Wyjątek merge: %1$s</string>
+    <string name="error_unknown">Nieznany błąd</string>
 </resources>

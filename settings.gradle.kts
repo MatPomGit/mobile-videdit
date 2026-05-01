@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MobileVideit"
+rootProject.name = "MobileVideoEdit"
 include(":app")
