@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VideoEdit</string>
+    <string name="no_video_loaded">Brak wczytanego pliku video</string>
+    <string name="load_video">Wczytaj video</string>
+    <string name="load_video_1">Wczytaj video 1</string>
+    <string name="load_video_2">Wczytaj video 2</string>
+    <string name="video_info">Informacje o video</string>
+    <string name="edit_settings">Ustawienia edycji</string>
+    <string name="resolution">Rozdzielczość</string>
+    <string name="fps">Liczba klatek na sekundę (FPS)</string>
+    <string name="bitrate">Bitrate</string>
+    <string name="spatial_crop">Przycinanie wymiarów obrazu</string>
+    <string name="crop_width">Szerokość (px)</string>
+    <string name="crop_height">Wysokość (px)</string>
+    <string name="crop_x">Offset X (px)</string>
+    <string name="crop_y">Offset Y (px)</string>
+    <string name="temporal_trim">Przycinanie na osi czasu</string>
+    <string name="trim_start">Czas początku (s)</string>
+    <string name="trim_end">Czas końca (s)</string>
+    <string name="merge_videos">Połączenie dwóch plików video</string>
+    <string name="video_1_not_loaded">Video 1: nie wczytano</string>
+    <string name="video_2_not_loaded">Video 2: nie wczytano</string>
+    <string name="merge_and_export">Połącz i eksportuj</string>
+    <string name="process_and_export">Przetwórz i eksportuj</string>
+    <string name="processing">Przetwarzanie…</string>
+    <string name="about">O aplikacji</string>
+    <string name="about_text">VideoEdit – aplikacja do edycji plików video.\n\nFunkcje:\n• Wczytywanie pliku video\n• Zmiana rozdzielczości\n• Zmiana liczby klatek na sekundę\n• Zmiana bitrate\n• Przycinanie wymiarów obrazu\n• Przycinanie nagrania na osi czasu\n• Eksport pliku\n• Łączenie dwóch plików video</string>
+    <string name="ok">OK</string>
+    <string name="error">Błąd</string>
+    <string name="success_export">Plik zapisany: %1$s</string>
+    <string name="permission_required">Wymagane uprawnienia do odczytu plików.</string>
+    <string name="original">Oryginalna</string>
+    <string name="keep_original">Oryginalny</string>
+    <string name="select_video">Wybierz plik video</string>
+    <string name="video_loaded">Video wczytane: %1$s</string>
+    <string name="no_video_selected">Nie wybrano pliku video</string>
+    <string name="both_videos_required">Wymagane są dwa pliki video do połączenia</string>
+    <string name="ffmpeg_not_available">FFmpeg niedostępny</string>
+    <string name="trim_end_hint">Domyślnie: koniec nagrania</string>
+    <string name="duration_label">Czas trwania: %1$.2f s</string>
+</resources>

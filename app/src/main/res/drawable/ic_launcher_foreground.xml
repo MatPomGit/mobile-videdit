@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <rect
+        android:fillColor="#1565C0"
+        android:width="108"
+        android:height="108" />
+    <!-- Play button icon -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M44,32 L44,76 L76,54 Z" />
+    <!-- Edit pencil -->
+    <path
+        android:fillColor="#FFCA28"
+        android:pathData="M60,66 L70,56 L74,60 L64,70 Z" />
+    <path
+        android:fillColor="#FFCA28"
+        android:pathData="M58,68 L60,66 L64,70 L58,72 Z" />
+</vector>
