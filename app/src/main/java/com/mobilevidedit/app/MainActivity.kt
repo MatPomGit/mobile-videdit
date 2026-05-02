@@ -255,6 +255,17 @@ class MainActivity : AppCompatActivity() {
         val trimStart = binding.etTrimStart.text.toString().trim().toDoubleOrNull() ?: 0.0
         val trimEnd = binding.etTrimEnd.text.toString().trim().toDoubleOrNull()
 
+        // Walidacja musi być wykonana przed budową argumentów FFmpeg, aby uniknąć
+        // przekazania niepoprawnego zakresu czasu i błędów wykonania komendy.
+        if (trimStart < 0.0) {
+            showErrorDialog("Nieprawidłowy zakres przycinania: początek (trimStart) nie może być mniejszy niż 0 sekund.")
+            return
+        }
+        if (trimEnd != null && trimEnd <= trimStart) {
+            showErrorDialog("Nieprawidłowy zakres przycinania: koniec (trimEnd) musi być większy niż początek (trimStart).")
+            return
+        }
+
         val params = VideoProcessParams(
             resolution = resolution,
             fps = fps,

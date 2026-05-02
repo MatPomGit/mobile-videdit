@@ -102,6 +102,20 @@ class VideoProcessor(private val context: Context) {
      * [ProcessingState.Error] with a description on failure.
      */
     fun processVideo(srcPath: String, params: VideoProcessParams): ProcessingState {
+        // Podwójna walidacja po stronie logiki biznesowej chroni przed
+        // uruchomieniem FFmpeg z błędnym zakresem czasu (np. gdy UI zostanie
+        // pominięte lub dane wejściowe będą pochodziły z innego źródła).
+        if (params.trimStart < 0.0) {
+            return ProcessingState.Error(
+                "Nieprawidłowy zakres przycinania: początek (trimStart) nie może być mniejszy niż 0 sekund."
+            )
+        }
+        if (params.trimEnd != null && params.trimEnd <= params.trimStart) {
+            return ProcessingState.Error(
+                "Nieprawidłowy zakres przycinania: koniec (trimEnd) musi być większy niż początek (trimStart)."
+            )
+        }
+
         val output = newOutputFile()
 
         val args = buildFFmpegArgs(srcPath, params, output.absolutePath)
