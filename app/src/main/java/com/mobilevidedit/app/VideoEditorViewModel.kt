@@ -14,7 +14,9 @@ import kotlinx.coroutines.withContext
  * ViewModel that owns all mutable video-editor state and delegates heavy
  * FFmpeg work to [VideoProcessor].
  */
-class VideoEditorViewModel : ViewModel() {
+class VideoEditorViewModel(
+    private val processorFactory: (Context) -> VideoProcessor = { context -> VideoProcessor(context) }
+) : ViewModel() {
 
     // ── LiveData exposed to the UI ────────────────────────────────────────────
 
@@ -39,6 +41,7 @@ class VideoEditorViewModel : ViewModel() {
     // ── Internal state ────────────────────────────────────────────────────────
 
     private var processor: VideoProcessor? = null
+    private var appContext: Context? = null
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -50,8 +53,9 @@ class VideoEditorViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             val path = UriUtils.copyUriToCache(context, uri, "video1_src")
             if (path != null) {
-                processor = VideoProcessor(context)
-                val info = processor!!.probeVideo(path)
+                appContext = context.applicationContext
+                val proc = ensureProcessor(context) ?: return@launch
+                val info = proc.probeVideo(path)
                 val duration = parseDuration(info)
                 withContext(Dispatchers.Main) {
                     _video1Uri.value = uri
@@ -74,6 +78,7 @@ class VideoEditorViewModel : ViewModel() {
      */
     fun setVideo2(uri: Uri, context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
+            appContext = context.applicationContext
             val path = UriUtils.copyUriToCache(context, uri, "video2_src")
             if (path != null) {
                 withContext(Dispatchers.Main) {
@@ -95,11 +100,11 @@ class VideoEditorViewModel : ViewModel() {
      */
     suspend fun processVideo(params: VideoProcessParams) {
         val srcPath = _video1Path.value
-        val proc = processor
-        if (srcPath == null || proc == null) {
+        if (srcPath == null) {
             _processingState.value = ProcessingState.Error("Brak wczytanego pliku video")
             return
         }
+        val proc = ensureProcessor() ?: return
         _processingState.value = ProcessingState.Processing("Przetwarzanie…")
         withContext(Dispatchers.IO) {
             val result = proc.processVideo(srcPath, params)
@@ -115,12 +120,12 @@ class VideoEditorViewModel : ViewModel() {
     suspend fun mergeVideos() {
         val path1 = _video1Path.value
         val path2 = _video2Path.value
-        val proc = processor
-        if (path1 == null || path2 == null || proc == null) {
+        if (path1 == null || path2 == null) {
             _processingState.value =
                 ProcessingState.Error("Wymagane są dwa pliki video do połączenia")
             return
         }
+        val proc = ensureProcessor() ?: return
         _processingState.value = ProcessingState.Processing("Łączenie plików video…")
         withContext(Dispatchers.IO) {
             val result = proc.mergeVideos(path1, path2)
@@ -131,6 +136,32 @@ class VideoEditorViewModel : ViewModel() {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+
+    /**
+     * Zapewnia pojedynczy punkt inicjalizacji [VideoProcessor] wraz ze spójną
+     * obsługą błędów. Rozdzielenie inicjalizacji od akcji użytkownika upraszcza
+     * testy i utrzymanie, bo logika tworzenia zależności nie jest rozsiana po
+     * metodach biznesowych.
+     */
+    private fun ensureProcessor(context: Context? = appContext): VideoProcessor? {
+        processor?.let { return it }
+
+        val safeContext = context?.applicationContext
+        if (safeContext == null) {
+            _processingState.value =
+                ProcessingState.Error("Nie można zainicjalizować procesora video: brak kontekstu aplikacji")
+            return null
+        }
+
+        return try {
+            processorFactory(safeContext).also { processor = it }
+        } catch (error: Throwable) {
+            _processingState.value =
+                ProcessingState.Error("Nie udało się zainicjalizować procesora video")
+            null
+        }
+    }
 
     /**
      * Parse a duration value (seconds) from the FFprobe-style info string
