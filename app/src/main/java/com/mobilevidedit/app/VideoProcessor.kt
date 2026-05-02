@@ -5,6 +5,7 @@ import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFprobeKit
 import com.arthenica.ffmpegkit.ReturnCode
 import java.io.File
+import kotlin.io.path.createTempFile
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -140,15 +141,19 @@ class VideoProcessor(private val context: Context) {
     fun mergeVideos(path1: String, path2: String): ProcessingState {
         val output = newOutputFile("_merged")
 
-        // Write a concat list file
-        val listFile = File(context.cacheDir, "concat_list.txt")
+        // Unikalna nazwa pliku eliminuje kolizje przy kilku sesjach przetwarzania.
+        val uniqueSuffix = "_${System.currentTimeMillis()}_${(1000..9999).random()}"
+        val listFile = createTempFile(
+            directory = context.cacheDir.toPath(),
+            prefix = "concat_list$uniqueSuffix_",
+            suffix = ".txt"
+        ).toFile()
         listFile.writeText("file '${path1.replace("'", "'\\''")}'\nfile '${path2.replace("'", "'\\''")}'\n")
 
         val args = "-f concat -safe 0 -i \"${listFile.absolutePath}\" -c:v libx264 -c:a aac -movflags +faststart \"${output.absolutePath}\""
 
         return try {
             val session = FFmpegKit.execute(args)
-            listFile.delete()
             if (ReturnCode.isSuccess(session.returnCode)) {
                 ProcessingState.Success(output.absolutePath)
             } else {
@@ -156,8 +161,9 @@ class VideoProcessor(private val context: Context) {
                 ProcessingState.Error(context.getString(R.string.error_ffmpeg_merge, logs))
             }
         } catch (e: Exception) {
-            listFile.delete()
             ProcessingState.Error(context.getString(R.string.error_merge_exception, e.message))
+        } finally {
+            listFile.delete()
         }
     }
 
