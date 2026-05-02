@@ -59,6 +59,12 @@ class VideoEditorViewModel : ViewModel() {
                     _videoInfo.value = info
                     _videoDurationSec.value = duration
                 }
+            } else {
+                withContext(Dispatchers.Main) {
+                    // Brak jawnego błędu utrudnia diagnozę użytkownikowi.
+                    _processingState.value =
+                        ProcessingState.Error("Nie udało się odczytać lub skopiować pierwszego pliku video")
+                }
             }
         }
     }
@@ -69,8 +75,16 @@ class VideoEditorViewModel : ViewModel() {
     fun setVideo2(uri: Uri, context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             val path = UriUtils.copyUriToCache(context, uri, "video2_src")
-            withContext(Dispatchers.Main) {
-                _video2Path.value = path
+            if (path != null) {
+                withContext(Dispatchers.Main) {
+                    _video2Path.value = path
+                }
+            } else {
+                withContext(Dispatchers.Main) {
+                    // Brak jawnego błędu utrudnia diagnozę użytkownikowi.
+                    _processingState.value =
+                        ProcessingState.Error("Nie udało się odczytać lub skopiować drugiego pliku video")
+                }
             }
         }
     }
