@@ -1,0 +1,45 @@
+name: Build APK
+
+on:
+  # Uruchamia workflow automatycznie dla zmian na głównych gałęziach.
+  push:
+    branches: [ "main", "master" ]
+  # Sprawdza każdą propozycję zmian przed scaleniem.
+  pull_request:
+    branches: [ "main", "master" ]
+  # Umożliwia ręczne uruchomienie z poziomu GitHub Actions.
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # Pobiera kod źródłowy repozytorium do środowiska CI.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Konfiguruje JDK wymagane do budowania projektu Android.
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      # Nadaje uprawnienia wykonywania wrapperowi Gradle.
+      - name: Grant execute permission for Gradle wrapper
+        run: chmod +x ./gradlew
+
+      # Buduje wariant debug APK, który nie wymaga podpisywania kluczem produkcyjnym.
+      - name: Build debug APK
+        run: ./gradlew --no-daemon assembleDebug
+
+      # Publikuje wygenerowany APK jako artefakt do pobrania z joba.
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
