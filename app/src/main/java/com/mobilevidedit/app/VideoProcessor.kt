@@ -1,6 +1,7 @@
 package com.mobilevidedit.app
 
 import android.content.Context
+import android.os.Build
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFprobeKit
 import com.arthenica.ffmpegkit.ReturnCode
@@ -27,9 +28,9 @@ class VideoProcessor(private val context: Context) {
         return dir
     }
 
-    private fun newOutputFile(suffix: String = ""): File {
+    private fun newOutputFile(suffix: String = "", extension: String = "mp4"): File {
         val ts = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        return File(outputDir(), "videdit_${ts}${suffix}.mp4")
+        return File(outputDir(), "videdit_${ts}${suffix}.${extension}")
     }
 
     // ── Probe ─────────────────────────────────────────────────────────────────
@@ -117,7 +118,7 @@ class VideoProcessor(private val context: Context) {
             )
         }
 
-        val output = newOutputFile()
+        val output = newOutputFile(extension = params.format)
 
         val args = buildFFmpegArgs(srcPath, params, output.absolutePath)
 
@@ -143,13 +144,16 @@ class VideoProcessor(private val context: Context) {
 
         // Unikalna nazwa pliku eliminuje kolizje przy kilku sesjach przetwarzania.
         val uniqueSuffix = "_${System.currentTimeMillis()}_${(1000..9999).random()}"
-        val listFile = createTempFile(
-            directory = context.cacheDir.toPath(),
-            prefix = "concat_list$uniqueSuffix_",
-            suffix = ".txt"
-        ).toFile()
+        val listFile = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            createTempFile(
+                directory = context.cacheDir.toPath(),
+                prefix = "concat_list${uniqueSuffix}_",
+                suffix = ".txt"
+            ).toFile()
+        } else {
+            TODO("VERSION.SDK_INT < O")
+        }
         listFile.writeText("file '${path1.replace("'", "'\\''")}'\nfile '${path2.replace("'", "'\\''")}'\n")
-
         val args = "-f concat -safe 0 -i \"${listFile.absolutePath}\" -c:v libx264 -c:a aac -movflags +faststart \"${output.absolutePath}\""
 
         return try {
@@ -225,8 +229,13 @@ class VideoProcessor(private val context: Context) {
             sb.append("-vf \"${filters.joinToString(",")}\" ")
         }
 
-        // ── Audio (re-encode to AAC for compatibility) ─────────────────────────
-        sb.append("-c:a aac ")
+        // ── Audio ─────────────────────────────────────────────────────────────
+        if (params.removeAudio) {
+            sb.append("-an ")
+        } else {
+            // Re-encode to AAC for compatibility
+            sb.append("-c:a aac ")
+        }
 
         // ── Output ────────────────────────────────────────────────────────────
         sb.append("-movflags +faststart ")

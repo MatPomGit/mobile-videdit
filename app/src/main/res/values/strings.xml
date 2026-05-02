@@ -10,6 +10,9 @@
     <string name="resolution">Rozdzielczość</string>
     <string name="fps">Liczba klatek na sekundę (FPS)</string>
     <string name="bitrate">Bitrate</string>
+    <string name="format">Format wyjściowy</string>
+    <string name="remove_audio">Usuń ścieżkę dźwiękową</string>
+    <string name="estimated_size">Szacowany rozmiar: %1$s</string>
     <string name="spatial_crop">Przycinanie wymiarów obrazu</string>
     <string name="crop_width">Szerokość (px)</string>
     <string name="crop_height">Wysokość (px)</string>
@@ -47,4 +50,8 @@
     <string name="error_ffmpeg_merge">FFmpeg merge error: %1$s</string>
     <string name="error_merge_exception">Wyjątek merge: %1$s</string>
     <string name="error_unknown">Nieznany błąd</string>
+    <string name="error_trim_negative">Nieprawidłowy zakres przycinania: początek nie może być mniejszy niż 0 sekund.</string>
+    <string name="error_trim_invalid_range">Nieprawidłowy zakres przycinania: koniec musi być większy niż początek.</string>
+    <string name="video_1_label">Video 1: %1$s</string>
+    <string name="video_2_label">Video 2: %1$s</string>
 </resources>

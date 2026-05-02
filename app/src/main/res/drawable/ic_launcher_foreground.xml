@@ -3,10 +3,9 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <rect
+    <path
         android:fillColor="#1565C0"
-        android:width="108"
-        android:height="108" />
+        android:pathData="M0,0h108v108h-108z" />
     <!-- Play button icon -->
     <path
         android:fillColor="#FFFFFF"

@@ -214,6 +214,46 @@
 
                     </com.google.android.material.textfield.TextInputLayout>
 
+                    <!-- Format -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Format"
+                        android:textAppearance="?attr/textAppearanceLabelMedium"
+                        android:layout_marginTop="8dp" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_marginTop="4dp">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/spinnerFormat"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="none" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Remove Audio -->
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/cbRemoveAudio"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/remove_audio" />
+
+                    <!-- Estimated Size -->
+                    <TextView
+                        android:id="@+id/tvEstimatedSize"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/estimated_size"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorPrimary" />
+
                 </LinearLayout>
 
             </com.google.android.material.card.MaterialCardView>
@@ -467,7 +507,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     app:trackThickness="6dp"
-                    app:indeterminate="true" />
+                    android:indeterminate="true" />
 
                 <TextView
                     android:id="@+id/tvProgressStatus"

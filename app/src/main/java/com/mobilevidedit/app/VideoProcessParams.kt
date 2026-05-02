@@ -15,6 +15,8 @@ package com.mobilevidedit.app
  * @param cropY       Vertical offset for the crop filter (default 0).
  * @param trimStart   Start time in seconds (default 0.0).
  * @param trimEnd     End time in seconds, or null to keep until the end.
+ * @param format      Output container format extension (e.g. "mp4", "mkv", "mov").
+ * @param removeAudio Whether to remove the audio track.
  */
 data class VideoProcessParams(
     val resolution: String,
@@ -25,5 +27,7 @@ data class VideoProcessParams(
     val cropX: Int = 0,
     val cropY: Int = 0,
     val trimStart: Double = 0.0,
-    val trimEnd: Double? = null
+    val trimEnd: Double? = null,
+    val format: String = "mp4",
+    val removeAudio: Boolean = false
 )

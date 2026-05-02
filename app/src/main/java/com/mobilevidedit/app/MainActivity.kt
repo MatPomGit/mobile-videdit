@@ -8,7 +8,6 @@ import android.os.Build
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,6 +15,8 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
+import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
@@ -59,6 +60,7 @@ class MainActivity : AppCompatActivity() {
 
         setupDropdowns()
         setupClickListeners()
+        setupParameterListeners()
         observeViewModel()
     }
 
@@ -85,17 +87,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ── Setup ─────────────────────────────────────────────────────────────────
-
     private fun setupDropdowns() {
         // Resolution options
         val resolutions = listOf(
             getString(R.string.original),
-            "3840x2160 (4K)",
-            "1920x1080 (Full HD)",
-            "1280x720 (HD)",
-            "854x480 (480p)",
-            "640x360 (360p)",
-            "426x240 (240p)"
+            "3840x2160 (4K Landscape)",
+            "1920x1080 (Full HD Landscape)",
+            "1280x720 (HD Landscape)",
+            "854x480 (480p Landscape)",
+            "640x360 (360p Landscape)",
+            "426x240 (240p Landscape)",
+            "2160x3840 (4K Portrait)",
+            "1080x1920 (Full HD Portrait)",
+            "720x1280 (HD Portrait)",
+            "480x854 (480p Portrait)",
+            "360x640 (360p Portrait)",
+            "240x426 (240p Portrait)"
         )
         binding.spinnerResolution.setAdapter(
             ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, resolutions)
@@ -126,6 +133,23 @@ class MainActivity : AppCompatActivity() {
             ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, bitrateList)
         )
         binding.spinnerBitrate.setText(bitrateList[0], false)
+
+        // Format options
+        val formats = listOf("mp4", "mkv", "mov", "avi")
+        binding.spinnerFormat.setAdapter(
+            ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, formats)
+        )
+        binding.spinnerFormat.setText(formats[0], false)
+    }
+
+    private fun setupParameterListeners() {
+        binding.spinnerResolution.setOnItemClickListener { _, _, _, _ -> updateEstimatedSize() }
+        binding.spinnerFps.setOnItemClickListener { _, _, _, _ -> updateEstimatedSize() }
+        binding.spinnerBitrate.setOnItemClickListener { _, _, _, _ -> updateEstimatedSize() }
+        binding.spinnerFormat.setOnItemClickListener { _, _, _, _ -> updateEstimatedSize() }
+        binding.etTrimStart.doAfterTextChanged { updateEstimatedSize() }
+        binding.etTrimEnd.doAfterTextChanged { updateEstimatedSize() }
+        binding.cbRemoveAudio.setOnCheckedChangeListener { _, _ -> updateEstimatedSize() }
     }
 
     private fun setupClickListeners() {
@@ -150,84 +174,113 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ── ViewModel observation ─────────────────────────────────────────────────
-
     private fun observeViewModel() {
+        val editorViews = with(binding) {
+            listOf(
+                playerView, cardVideoInfo, cardEditSettings,
+                cardCropSettings, cardTrimSettings, cardMerge, btnProcess
+            )
+        }
+
         viewModel.video1Uri.observe(this) { uri ->
-            if (uri != null) {
-                showVideoInPlayer(uri)
-                binding.placeholderLayout.visibility = View.GONE
-                binding.playerView.visibility = View.VISIBLE
-                binding.cardVideoInfo.visibility = View.VISIBLE
-                binding.cardEditSettings.visibility = View.VISIBLE
-                binding.cardCropSettings.visibility = View.VISIBLE
-                binding.cardTrimSettings.visibility = View.VISIBLE
-                binding.cardMerge.visibility = View.VISIBLE
-                binding.btnProcess.visibility = View.VISIBLE
-            } else {
-                binding.placeholderLayout.visibility = View.VISIBLE
-                binding.playerView.visibility = View.GONE
-                binding.cardVideoInfo.visibility = View.GONE
-                binding.cardEditSettings.visibility = View.GONE
-                binding.cardCropSettings.visibility = View.GONE
-                binding.cardTrimSettings.visibility = View.GONE
-                binding.cardMerge.visibility = View.GONE
-                binding.btnProcess.visibility = View.GONE
-            }
+            val hasVideo = uri != null
+            if (uri != null) showVideoInPlayer(uri)
+
+            binding.placeholderLayout.isVisible = !hasVideo
+            editorViews.forEach { it.isVisible = hasVideo }
         }
 
         viewModel.videoInfo.observe(this) { info ->
             binding.tvVideoInfo.text = info
+            updateEstimatedSize()
         }
 
         viewModel.video1Path.observe(this) { path ->
-            binding.tvVideo1Path.text = if (path != null)
-                "Video 1: ${path.substringAfterLast('/')}"
-            else
-                getString(R.string.video_1_not_loaded)
+            binding.tvVideo1Path.text = path?.let {
+                getString(R.string.video_1_label, it.substringAfterLast('/'))
+            } ?: getString(R.string.video_1_not_loaded)
         }
 
         viewModel.video2Path.observe(this) { path ->
-            binding.tvVideo2Path.text = if (path != null)
-                "Video 2: ${path.substringAfterLast('/')}"
-            else
-                getString(R.string.video_2_not_loaded)
+            binding.tvVideo2Path.text = path?.let {
+                getString(R.string.video_2_label, it.substringAfterLast('/'))
+            } ?: getString(R.string.video_2_not_loaded)
         }
 
         viewModel.videoDurationSec.observe(this) { duration ->
             if (duration > 0) {
                 binding.tvDuration.text = getString(R.string.duration_label, duration)
                 if (binding.etTrimEnd.text.isNullOrEmpty()) {
-                    binding.etTrimEnd.setText(String.format("%.2f", duration))
+                    binding.etTrimEnd.setText("%.2f".format(duration))
                 }
+                updateEstimatedSize()
             }
         }
 
         viewModel.processingState.observe(this) { state ->
+            val isProcessing = state is ProcessingState.Processing
+            updateProcessingUi(isProcessing)
+
             when (state) {
-                is ProcessingState.Idle -> {
-                    binding.layoutProgress.visibility = View.GONE
-                    binding.btnProcess.isEnabled = true
-                    binding.btnMerge.isEnabled = true
-                }
                 is ProcessingState.Processing -> {
-                    binding.layoutProgress.visibility = View.VISIBLE
                     binding.tvProgressStatus.text = state.message
-                    binding.btnProcess.isEnabled = false
-                    binding.btnMerge.isEnabled = false
                 }
                 is ProcessingState.Success -> {
-                    binding.layoutProgress.visibility = View.GONE
-                    binding.btnProcess.isEnabled = true
-                    binding.btnMerge.isEnabled = true
                     showSuccessDialog(state.outputPath)
                 }
                 is ProcessingState.Error -> {
-                    binding.layoutProgress.visibility = View.GONE
-                    binding.btnProcess.isEnabled = true
-                    binding.btnMerge.isEnabled = true
                     showErrorDialog(state.message)
                 }
+                is ProcessingState.Idle -> {}
             }
+        }
+    }
+
+    private fun updateProcessingUi(isProcessing: Boolean) {
+        binding.layoutProgress.isVisible = isProcessing
+        binding.btnProcess.isEnabled = !isProcessing
+        binding.btnMerge.isEnabled = !isProcessing
+    }
+
+    private fun updateEstimatedSize() {
+        val duration = try {
+            val start = binding.etTrimStart.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
+            val totalDuration = viewModel.videoDurationSec.value ?: 0.0
+            val endStr = binding.etTrimEnd.text.toString().replace(',', '.')
+            val end = if (endStr.isEmpty()) totalDuration else endStr.toDoubleOrNull() ?: totalDuration
+            (end - start).coerceAtLeast(0.0)
+        } catch (e: Exception) {
+            0.0
+        }
+
+        val bitrateStr = binding.spinnerBitrate.text.toString()
+        val bitrateKbps = if (bitrateStr == getString(R.string.keep_original)) {
+            val info = viewModel.videoInfo.value ?: ""
+            // Parse "Bitrate: 5000 kbps"
+            val match = Regex("""Bitrate:\s*(\d+)\s*kbps""").find(info)
+            match?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+        } else {
+            // Parse "5000k (5 Mbps)"
+            Regex("""^(\d+)k""").find(bitrateStr)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+        }
+
+        if (bitrateKbps > 0 && duration > 0) {
+            val videoSizeBits = bitrateKbps * 1000.0 * duration
+            var totalSizeBytes = (videoSizeBits / 8.0).toLong()
+            
+            // If keeping audio, add a rough estimate for AAC (e.g., 128 kbps)
+            if (!binding.cbRemoveAudio.isChecked) {
+                totalSizeBytes += (128 * 1000.0 * duration / 8.0).toLong()
+            }
+
+            val sizeMb = totalSizeBytes / (1024.0 * 1024.0)
+            binding.tvEstimatedSize.text = getString(
+                R.string.estimated_size, 
+                String.format(java.util.Locale.US, "%.1f MB", sizeMb)
+            )
+            binding.tvEstimatedSize.isVisible = true
+        } else {
+            binding.tvEstimatedSize.isVisible = false
         }
     }
 
@@ -243,11 +296,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ── Processing ────────────────────────────────────────────────────────────
-
     private fun processVideo() {
         val resolution = binding.spinnerResolution.text.toString()
         val fps = binding.spinnerFps.text.toString()
         val bitrate = binding.spinnerBitrate.text.toString()
+        val format = binding.spinnerFormat.text.toString()
+        val removeAudio = binding.cbRemoveAudio.isChecked
         val cropWidth = binding.etCropWidth.text.toString().trim().toIntOrNull()
         val cropHeight = binding.etCropHeight.text.toString().trim().toIntOrNull()
         val cropX = binding.etCropX.text.toString().trim().toIntOrNull() ?: 0
@@ -258,11 +312,11 @@ class MainActivity : AppCompatActivity() {
         // Walidacja musi być wykonana przed budową argumentów FFmpeg, aby uniknąć
         // przekazania niepoprawnego zakresu czasu i błędów wykonania komendy.
         if (trimStart < 0.0) {
-            showErrorDialog("Nieprawidłowy zakres przycinania: początek (trimStart) nie może być mniejszy niż 0 sekund.")
+            showErrorDialog(getString(R.string.error_trim_negative))
             return
         }
         if (trimEnd != null && trimEnd <= trimStart) {
-            showErrorDialog("Nieprawidłowy zakres przycinania: koniec (trimEnd) musi być większy niż początek (trimStart).")
+            showErrorDialog(getString(R.string.error_trim_invalid_range))
             return
         }
 
@@ -275,7 +329,9 @@ class MainActivity : AppCompatActivity() {
             cropX = cropX,
             cropY = cropY,
             trimStart = trimStart,
-            trimEnd = trimEnd
+            trimEnd = trimEnd,
+            format = format,
+            removeAudio = removeAudio
         )
 
         lifecycleScope.launch {
@@ -290,7 +346,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ── Permissions & picking ─────────────────────────────────────────────────
-
     private fun requestVideoPermissionAndPick() {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             Manifest.permission.READ_MEDIA_VIDEO
@@ -309,7 +364,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ── Dialogs ───────────────────────────────────────────────────────────────
-
     private fun showAboutDialog() {
         AlertDialog.Builder(this)
             .setTitle(R.string.about)
