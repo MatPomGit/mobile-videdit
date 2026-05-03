@@ -1,12 +1,10 @@
 package com.mobilevidedit.app
 
 import android.content.Context
-import android.os.Build
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFprobeKit
 import com.arthenica.ffmpegkit.ReturnCode
 import java.io.File
-import kotlin.io.path.createTempFile
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -144,15 +142,15 @@ class VideoProcessor(private val context: Context) {
 
         // Unikalna nazwa pliku eliminuje kolizje przy kilku sesjach przetwarzania.
         val uniqueSuffix = "_${System.currentTimeMillis()}_${(1000..9999).random()}"
-        val listFile = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            createTempFile(
-                directory = context.cacheDir.toPath(),
-                prefix = "concat_list${uniqueSuffix}_",
-                suffix = ".txt"
-            ).toFile()
-        } else {
-            TODO("VERSION.SDK_INT < O")
-        }
+
+        // Używamy java.io.File.createTempFile zamiast ścieżki zależnej od API 26,
+        // aby łączenie działało poprawnie już od minSdk = 24 i nie kończyło się
+        // wyjątkiem NotImplementedError na starszych urządzeniach.
+        val listFile = File.createTempFile(
+            "concat_list${uniqueSuffix}_",
+            ".txt",
+            context.cacheDir
+        )
         listFile.writeText("file '${path1.replace("'", "'\\''")}'\nfile '${path2.replace("'", "'\\''")}'\n")
         val args = "-f concat -safe 0 -i \"${listFile.absolutePath}\" -c:v libx264 -c:a aac -movflags +faststart \"${output.absolutePath}\""
 
