@@ -59,8 +59,11 @@ class VideoProcessor(private val context: Context) {
                 "-show_entries stream=width,height,r_frame_rate,codec_name,codec_type " +
                 "-of default=noprint_wrappers=1 \"$path\""
             )
-            val output = session.allLogsAsString ?: ""
-            parseProbeOutput(output, path)
+            // FFprobe zwraca dane diagnostyczne/metadata na strumieniu output,
+            // a niekoniecznie w allLogsAsString. Użycie output eliminuje
+            // fałszywe błędy "nie udało się przeanalizować pliku" dla poprawnych MP4/H.264.
+            val probeOutput = session.output ?: ""
+            parseProbeOutput(probeOutput, path)
         } catch (e: Exception) {
             null
         }
