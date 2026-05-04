@@ -28,6 +28,16 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      # Odtwarza brakujący plik gradle-wrapper.jar z oficjalnego wydania Gradle,
+      # dzięki czemu build działa nawet gdy repo nie przechowuje plików binarnych.
+      - name: Restore Gradle wrapper JAR
+        run: |
+          GRADLE_VERSION=$(sed -n 's/.*gradle-\([0-9.]*\)-bin.zip/\1/p' gradle/wrapper/gradle-wrapper.properties)
+          if [ -z "$GRADLE_VERSION" ]; then
+            echo "Nie udało się odczytać wersji Gradle z gradle-wrapper.properties" >&2
+            exit 1
+          fi
+          curl -fsSL "https://raw.githubusercontent.com/gradle/gradle/v${GRADLE_VERSION}/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar
       # Nadaje uprawnienia wykonywania wrapperowi Gradle.
       - name: Grant execute permission for Gradle wrapper
         run: chmod +x ./gradlew
