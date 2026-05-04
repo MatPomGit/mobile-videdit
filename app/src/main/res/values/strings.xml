@@ -54,4 +54,15 @@
     <string name="error_trim_invalid_range">Nieprawidłowy zakres przycinania: koniec musi być większy niż początek.</string>
     <string name="video_1_label">Video 1: %1$s</string>
     <string name="video_2_label">Video 2: %1$s</string>
+    <string name="export_mode">Tryb zapisu</string>
+    <string name="export_new_file">Zapisz jako nowy plik (kopia)</string>
+    <string name="export_replace_original">Zastąp oryginał</string>
+    <string name="action_trim_4s">Obetnij ostatnie 4s (kopia)</string>
+    <string name="action_compress">Zmniejsz rozmiar (kopia)</string>
+    <string name="confirm_replace_title">Potwierdź zastąpienie</string>
+    <string name="confirm_replace_message">Czy na pewno chcesz zastąpić oryginalny plik? Tej operacji nie można cofnąć.</string>
+    <string name="video_filters">Filtry wideo</string>
+    <string name="grayscale">Odcienie szarości</string>
+    <string name="brightness">Jasność</string>
+    <string name="contrast">Kontrast</string>
 </resources>

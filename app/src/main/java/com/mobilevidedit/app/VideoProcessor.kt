@@ -2,12 +2,15 @@ package com.mobilevidedit.app
 
 import android.content.Context
 import com.arthenica.ffmpegkit.FFmpegKit
+import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.arthenica.ffmpegkit.FFprobeKit
 import com.arthenica.ffmpegkit.ReturnCode
+import com.arthenica.ffmpegkit.FFmpegSession
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.CountDownLatch
 
 /**
  * Handles all FFmpeg/FFprobe operations.
@@ -31,247 +34,298 @@ class VideoProcessor(private val context: Context) {
         return File(outputDir(), "videdit_${ts}${suffix}.${extension}")
     }
 
+    private var currentSessionId: Long? = null
+
+    /**
+     * Cancel the currently running FFmpeg/FFprobe session.
+     */
+    fun cancelAnyActiveSession() {
+        currentSessionId?.let {
+            FFmpegKit.cancel(it)
+            currentSessionId = null
+        }
+    }
+
     // ── Probe ─────────────────────────────────────────────────────────────────
 
     /**
-     * Return a human-readable string with basic video information obtained
-     * from FFprobe.  Never throws – returns an error message on failure.
+     * Probe video file and return structured metadata.
+     * Returns null on failure.
      */
-    fun probeVideo(path: String): String {
+    fun probeVideo(path: String): VideoMetadata? {
         return try {
             val session = FFprobeKit.execute(
                 "-v error -show_entries format=duration,bit_rate " +
-                "-show_entries stream=width,height,r_frame_rate,codec_name " +
+                "-show_entries stream=width,height,r_frame_rate,codec_name,codec_type " +
                 "-of default=noprint_wrappers=1 \"$path\""
             )
             val output = session.allLogsAsString ?: ""
-            formatProbeOutput(output, path)
+            parseProbeOutput(output, path)
         } catch (e: Exception) {
-            context.getString(R.string.error_probe, e.message)
+            null
         }
     }
 
-    private fun formatProbeOutput(raw: String, path: String): String {
+    private fun parseProbeOutput(raw: String, path: String): VideoMetadata? {
         val lines = raw.lines()
-        fun find(key: String) = lines.firstOrNull { it.startsWith("$key=") }
-            ?.substringAfter("=")?.trim() ?: "?"
+        
+        var videoCodec: String? = null
+        var audioCodec: String? = null
+        var width = 0
+        var height = 0
+        var fps = 0.0
+        var bitrateKbps = 0L
+        var durationSec = 0.0
 
-        val codec = find("codec_name")
-        val width = find("width")
-        val height = find("height")
-        val fps = find("r_frame_rate").let { r ->
-            if (r.contains('/')) {
-                val parts = r.split('/')
-                val num = parts[0].toDoubleOrNull()
-                val den = parts[1].toDoubleOrNull()
-                if (num != null && den != null && den != 0.0)
-                    String.format("%.2f", num / den)
-                else r
-            } else r
+        var currentType: String? = null
+        
+        for (line in lines) {
+            val key = line.substringBefore("=").trim()
+            val value = line.substringAfter("=", "").trim()
+            
+            when (key) {
+                "codec_type" -> currentType = value
+                "codec_name" -> {
+                    if (currentType == "video") videoCodec = value
+                    else if (currentType == "audio") audioCodec = value
+                }
+                "width" -> if (currentType == "video") width = value.toIntOrNull() ?: 0
+                "height" -> if (currentType == "video") height = value.toIntOrNull() ?: 0
+                "r_frame_rate" -> if (currentType == "video") {
+                    fps = if (value.contains('/')) {
+                        val parts = value.split('/')
+                        val num = parts[0].toDoubleOrNull()
+                        val den = parts[1].toDoubleOrNull()
+                        if (num != null && den != null && den != 0.0) num / den else 0.0
+                    } else value.toDoubleOrNull() ?: 0.0
+                }
+                "bit_rate" -> if (bitrateKbps == 0L) bitrateKbps = (value.toLongOrNull() ?: 0L) / 1000
+                "duration" -> if (durationSec == 0.0) durationSec = value.toDoubleOrNull() ?: 0.0
+            }
         }
-        val bitrate = find("bit_rate").let { br ->
-            val bps = br.toLongOrNull()
-            if (bps != null) "${bps / 1000} kbps" else br
-        }
-        val durationSec = find("duration").toDoubleOrNull()
-        val durationStr = if (durationSec != null) formatDuration(durationSec) else "?"
 
-        return buildString {
-            appendLine("Plik: ${File(path).name}")
-            appendLine("Kodek: $codec")
-            appendLine("Rozdzielczość: ${width}x${height}")
-            appendLine("FPS: $fps")
-            appendLine("Bitrate: $bitrate")
-            append("Duration: $durationStr")
+        return videoCodec?.let {
+            VideoMetadata(
+                fileName = File(path).name,
+                videoCodec = it,
+                audioCodec = audioCodec,
+                width = width,
+                height = height,
+                fps = fps,
+                bitrateKbps = bitrateKbps,
+                durationSec = durationSec
+            )
         }
     }
 
-    private fun formatDuration(sec: Double): String {
-        val h = (sec / 3600).toInt()
-        val m = ((sec % 3600) / 60).toInt()
-        val s = sec % 60
-        return String.format("%02d:%02d:%06.3f", h, m, s)
+    /**
+     * Clear all temporary files in cache and app-specific video directory.
+     */
+    fun clearTemporaryFiles() {
+        try {
+            outputDir().listFiles()?.forEach { it.delete() }
+            context.cacheDir.listFiles()?.forEach { 
+                if (it.name.startsWith("video1_src") || it.name.startsWith("video2_src") || it.name.contains("concat_list")) {
+                    it.delete()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     // ── Process (transcode / crop / trim) ─────────────────────────────────────
 
     /**
      * Apply the given [params] to [srcPath] and write the result to a new file.
-     *
-     * Returns [ProcessingState.Success] with the output path or
-     * [ProcessingState.Error] with a description on failure.
      */
-    fun processVideo(srcPath: String, params: VideoProcessParams): ProcessingState {
-        // Podwójna walidacja po stronie logiki biznesowej chroni przed
-        // uruchomieniem FFmpeg z błędnym zakresem czasu (np. gdy UI zostanie
-        // pominięte lub dane wejściowe będą pochodziły z innego źródła).
+    fun processVideo(
+        srcPath: String,
+        params: VideoProcessParams,
+        totalDurationMs: Long,
+        onProgress: (Int) -> Unit
+    ): ProcessingState {
         if (params.trimStart < 0.0) {
-            return ProcessingState.Error(
-                "Nieprawidłowy zakres przycinania: początek (trimStart) nie może być mniejszy niż 0 sekund."
-            )
+            return ProcessingState.Error("Nieprawidłowy zakres przycinania (początek < 0).")
         }
         if (params.trimEnd != null && params.trimEnd <= params.trimStart) {
-            return ProcessingState.Error(
-                "Nieprawidłowy zakres przycinania: koniec (trimEnd) musi być większy niż początek (trimStart)."
-            )
+            return ProcessingState.Error("Nieprawidłowy zakres przycinania (koniec <= początek).")
         }
 
         val output = newOutputFile(extension = params.format)
-
         val args = buildFFmpegArgs(srcPath, params, output.absolutePath)
 
-        return try {
-            val session = FFmpegKit.execute(args)
-            if (ReturnCode.isSuccess(session.returnCode)) {
-                ProcessingState.Success(output.absolutePath)
-            } else {
-                val logs = session.allLogsAsString ?: context.getString(R.string.error_unknown)
-                ProcessingState.Error(context.getString(R.string.error_ffmpeg, logs))
-            }
-        } catch (e: Exception) {
-            ProcessingState.Error(context.getString(R.string.error_ffmpeg_exception, e.message))
+        val targetDurationMs = if (params.trimEnd != null) {
+            ((params.trimEnd - params.trimStart) * 1000).toLong()
+        } else {
+            totalDurationMs - (params.trimStart * 1000).toLong()
         }
+
+        return runFFmpeg(args, targetDurationMs, onProgress, output.absolutePath)
     }
 
     /**
-     * Concatenate [path1] and [path2] (re-encoding to ensure compatibility)
-     * and write the result to a new file.
+     * Concatenate [path1] and [path2].
      */
-    fun mergeVideos(path1: String, path2: String): ProcessingState {
+    fun mergeVideos(
+        path1: String,
+        path2: String,
+        totalDurationMs: Long,
+        useStreamCopy: Boolean = false,
+        onProgress: (Int) -> Unit
+    ): ProcessingState {
         val output = newOutputFile("_merged")
-
-        // Unikalna nazwa pliku eliminuje kolizje przy kilku sesjach przetwarzania.
-        val uniqueSuffix = "_${System.currentTimeMillis()}_${(1000..9999).random()}"
-
-        // Używamy java.io.File.createTempFile zamiast ścieżki zależnej od API 26,
-        // aby łączenie działało poprawnie już od minSdk = 24 i nie kończyło się
-        // wyjątkiem NotImplementedError na starszych urządzeniach.
-        val listFile = File.createTempFile(
-            "concat_list${uniqueSuffix}_",
-            ".txt",
-            context.cacheDir
-        )
+        val uniqueSuffix = "_${System.currentTimeMillis()}"
+        val listFile = File.createTempFile("concat_list${uniqueSuffix}_", ".txt", context.cacheDir)
         listFile.writeText("file '${path1.replace("'", "'\\''")}'\nfile '${path2.replace("'", "'\\''")}'\n")
-        val args = "-f concat -safe 0 -i \"${listFile.absolutePath}\" -c:v libx264 -c:a aac -movflags +faststart \"${output.absolutePath}\""
+        
+        val codecArgs = if (useStreamCopy) "-c copy" else "-c:v h264_mediacodec -c:a aac"
+        val args = "-f concat -safe 0 -i \"${listFile.absolutePath}\" $codecArgs -movflags +faststart \"${output.absolutePath}\""
 
         return try {
-            val session = FFmpegKit.execute(args)
-            if (ReturnCode.isSuccess(session.returnCode)) {
-                ProcessingState.Success(output.absolutePath)
-            } else {
-                val logs = session.allLogsAsString ?: context.getString(R.string.error_unknown)
-                ProcessingState.Error(context.getString(R.string.error_ffmpeg_merge, logs))
-            }
-        } catch (e: Exception) {
-            ProcessingState.Error(context.getString(R.string.error_merge_exception, e.message))
+            runFFmpeg(args, totalDurationMs, onProgress, output.absolutePath)
         } finally {
             listFile.delete()
         }
     }
 
-    // ── FFmpeg argument builder ───────────────────────────────────────────────
+    /**
+     * Helper to run FFmpeg asynchronously while blocking the current thread,
+     * allowing for cancellation via [currentSessionId].
+     */
+    private fun runFFmpeg(
+        args: String,
+        targetDurationMs: Long,
+        onProgress: (Int) -> Unit,
+        outputPath: String
+    ): ProcessingState {
+        val latch = CountDownLatch(1)
+        var sessionResult: FFmpegSession? = null
+
+        FFmpegKitConfig.enableStatisticsCallback { stats ->
+            if (stats.time > 0 && targetDurationMs > 0) {
+                val progress = (stats.time * 100 / targetDurationMs).toInt().coerceIn(0, 100)
+                onProgress(progress)
+            }
+        }
+
+        val session = FFmpegKit.executeAsync(args) { s ->
+            sessionResult = s
+            latch.countDown()
+        }
+        
+        currentSessionId = session.sessionId
+        
+        return try {
+            latch.await()
+            FFmpegKitConfig.enableStatisticsCallback(null)
+            currentSessionId = null
+            
+            val completedSession = sessionResult ?: return ProcessingState.Error("Błąd sesji FFmpeg")
+            val returnCode = completedSession.returnCode
+            
+            if (ReturnCode.isSuccess(returnCode)) {
+                ProcessingState.Success(outputPath)
+            } else if (ReturnCode.isCancel(returnCode)) {
+                ProcessingState.Idle
+            } else {
+                val logs = completedSession.allLogsAsString ?: context.getString(R.string.error_unknown)
+                ProcessingState.Error(context.getString(R.string.error_ffmpeg, logs))
+            }
+        } catch (e: Exception) {
+            currentSessionId = null
+            ProcessingState.Error(context.getString(R.string.error_ffmpeg_exception, e.message))
+        }
+    }
 
     /**
-     * Build the complete FFmpeg command-line string for a single-clip transcode.
-     *
-     * Filter chain precedence:
-     *   1. crop (spatial)
-     *   2. scale (resolution)
-     * Temporal trim is implemented via `-ss` / `-to` input flags (fast seek).
+     * Generate a single preview frame with filters applied.
      */
+    fun generatePreviewFrame(
+        srcPath: String,
+        params: VideoProcessParams,
+        atTimeSec: Double
+    ): String? {
+        val output = File(context.cacheDir, "preview_frame.jpg")
+        if (output.exists()) output.delete()
+
+        val filters = mutableListOf<String>()
+        if (params.cropWidth != null && params.cropHeight != null) {
+            filters += "crop=${params.cropWidth}:${params.cropHeight}:${params.cropX}:${params.cropY}"
+        }
+        parseResolutionFilter(params.resolution)?.let { filters += it }
+        if (params.grayscale) {
+            filters += "format=gray"
+        }
+        if (params.brightness != 0.0f || params.contrast != 1.0f) {
+            filters += "eq=brightness=${params.brightness}:contrast=${params.contrast}"
+        }
+
+        val filterArg = if (filters.isNotEmpty()) "-vf \"${filters.joinToString(",")}\" " else ""
+        
+        // Fast seek with -ss before -i, then accurate seek with -ss after -i if needed, 
+        // but for preview frame -ss before -i is usually enough and much faster.
+        val args = "-ss $atTimeSec -i \"$srcPath\" $filterArg -frames:v 1 -q:v 2 \"${output.absolutePath}\""
+        
+        val session = FFmpegKit.execute(args)
+        return if (ReturnCode.isSuccess(session.returnCode)) {
+            output.absolutePath
+        } else {
+            null
+        }
+    }
+
+    // ── FFmpeg argument builder ───────────────────────────────────────────────
+
+
     private fun buildFFmpegArgs(
         srcPath: String,
         params: VideoProcessParams,
         outputPath: String
     ): String {
         val sb = StringBuilder()
-
-        // ── Input with optional seek ──────────────────────────────────────────
-        if (params.trimStart > 0) {
-            sb.append("-ss ${params.trimStart} ")
-        }
+        if (params.trimStart > 0) sb.append("-ss ${params.trimStart} ")
         sb.append("-i \"$srcPath\" ")
-        if (params.trimEnd != null) {
-            sb.append("-to ${params.trimEnd - params.trimStart} ")
-        }
+        if (params.trimEnd != null) sb.append("-to ${params.trimEnd - params.trimStart} ")
 
-        // ── Video codec ───────────────────────────────────────────────────────
-        sb.append("-c:v libx264 ")
+        sb.append("-c:v h264_mediacodec ")
 
-        // ── Bitrate ───────────────────────────────────────────────────────────
-        val bitrateValue = parseBitrateValue(params.bitrate)
-        if (bitrateValue != null) {
-            sb.append("-b:v $bitrateValue ")
-        }
+        parseBitrateValue(params.bitrate)?.let { sb.append("-b:v $it ") }
+        parseFpsValue(params.fps)?.let { sb.append("-r $it ") }
 
-        // ── FPS ───────────────────────────────────────────────────────────────
-        val fpsValue = parseFpsValue(params.fps)
-        if (fpsValue != null) {
-            sb.append("-r $fpsValue ")
-        }
-
-        // ── Video filters (crop + scale) ──────────────────────────────────────
         val filters = mutableListOf<String>()
-
-        val doCrop = params.cropWidth != null && params.cropHeight != null
-        if (doCrop) {
+        if (params.cropWidth != null && params.cropHeight != null) {
             filters += "crop=${params.cropWidth}:${params.cropHeight}:${params.cropX}:${params.cropY}"
         }
-
-        val scaleValue = parseResolutionFilter(params.resolution)
-        if (scaleValue != null) {
-            filters += scaleValue
+        parseResolutionFilter(params.resolution)?.let { filters += it }
+        if (params.grayscale) {
+            filters += "format=gray"
         }
-
-        if (filters.isNotEmpty()) {
-            sb.append("-vf \"${filters.joinToString(",")}\" ")
+        if (params.brightness != 0.0f || params.contrast != 1.0f) {
+            filters += "eq=brightness=${params.brightness}:contrast=${params.contrast}"
         }
+        if (filters.isNotEmpty()) sb.append("-vf \"${filters.joinToString(",")}\" ")
 
-        // ── Audio ─────────────────────────────────────────────────────────────
-        if (params.removeAudio) {
-            sb.append("-an ")
-        } else {
-            // Re-encode to AAC for compatibility
-            sb.append("-c:a aac ")
-        }
+        if (params.removeAudio) sb.append("-an ") else sb.append("-c:a aac ")
 
-        // ── Output ────────────────────────────────────────────────────────────
-        sb.append("-movflags +faststart ")
-        sb.append("\"$outputPath\"")
-
+        sb.append("-movflags +faststart \"$outputPath\"")
         return sb.toString()
     }
 
-    // ── Value parsers ─────────────────────────────────────────────────────────
-
-    /**
-     * Parse the bitrate option string and return a value suitable for `-b:v`,
-     * e.g. `"5000k"`, or null if the user chose "Keep original".
-     */
     private fun parseBitrateValue(option: String): String? {
         if (option.startsWith("Oryginalny") || option.startsWith("Keep")) return null
-        val match = Regex("""^(\d+k)""").find(option.trim()) ?: return null
-        return match.groupValues[1]
+        return Regex("""^(\d+k)""").find(option.trim())?.groupValues?.get(1)
     }
 
-    /**
-     * Parse the FPS option string and return the frame-rate number, or null if
-     * the user chose "Keep original".
-     */
     private fun parseFpsValue(option: String): Int? {
         if (option.startsWith("Oryginalny") || option.startsWith("Keep")) return null
         return option.trim().toIntOrNull()
     }
 
-    /**
-     * Parse the resolution option string and return a `scale=` filter string,
-     * e.g. `"scale=1920:1080"`, or null if "Original" was chosen.
-     */
     private fun parseResolutionFilter(option: String): String? {
         if (option.startsWith("Oryginalna") || option.startsWith("Original")) return null
         val match = Regex("""(\d+)x(\d+)""").find(option) ?: return null
         val (w, h) = match.destructured
-        // Use -2 trick to keep divisibility by 2 even after crop
         return "scale=${w}:${h}:force_original_aspect_ratio=decrease,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2"
     }
 }

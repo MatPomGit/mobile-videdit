@@ -1,6 +1,14 @@
 package com.mobilevidedit.app
 
 /**
+ * Export mode for the video processing operation.
+ */
+enum class ExportMode {
+    NEW_FILE,
+    REPLACE_ORIGINAL
+}
+
+/**
  * Parameters for a video processing operation.
  *
  * @param resolution  Human-readable string such as "1920x1080 (Full HD)" or the
@@ -17,6 +25,10 @@ package com.mobilevidedit.app
  * @param trimEnd     End time in seconds, or null to keep until the end.
  * @param format      Output container format extension (e.g. "mp4", "mkv", "mov").
  * @param removeAudio Whether to remove the audio track.
+ * @param exportMode  Whether to save as a new file or replace the original.
+ * @param grayscale   Whether to apply a grayscale filter.
+ * @param brightness  Brightness adjustment (-1.0 to 1.0, default 0.0).
+ * @param contrast    Contrast adjustment (-2.0 to 2.0, default 1.0).
  */
 data class VideoProcessParams(
     val resolution: String,
@@ -29,5 +41,9 @@ data class VideoProcessParams(
     val trimStart: Double = 0.0,
     val trimEnd: Double? = null,
     val format: String = "mp4",
-    val removeAudio: Boolean = false
+    val removeAudio: Boolean = false,
+    val exportMode: ExportMode = ExportMode.NEW_FILE,
+    val grayscale: Boolean = false,
+    val brightness: Float = 0.0f,
+    val contrast: Float = 1.0f
 )

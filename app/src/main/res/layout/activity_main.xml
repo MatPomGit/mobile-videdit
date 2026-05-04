@@ -31,68 +31,100 @@
             android:padding="16dp">
 
             <!-- Video Player -->
-            <androidx.media3.ui.PlayerView
-                android:id="@+id/playerView"
-                android:layout_width="match_parent"
-                android:layout_height="220dp"
-                android:background="#000000"
-                app:use_controller="true"
-                app:resize_mode="fit" />
-
-            <!-- No video placeholder -->
-            <LinearLayout
-                android:id="@+id/placeholderLayout"
-                android:layout_width="match_parent"
-                android:layout_height="220dp"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:background="#1A1A1A"
-                android:visibility="visible">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/no_video_loaded"
-                    android:textColor="#FFFFFF"
-                    android:textSize="16sp" />
-
-                <Button
-                    android:id="@+id/btnLoadVideoPlaceholder"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/load_video" />
-
-            </LinearLayout>
-
-            <!-- Load buttons -->
-            <LinearLayout
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/playerCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="12dp"
-                android:gravity="center">
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/colorOutlineVariant">
 
-                <Button
-                    android:id="@+id/btnLoadVideo1"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="220dp">
+
+                    <androidx.media3.ui.PlayerView
+                        android:id="@+id/playerView"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="#000000"
+                        app:use_controller="true"
+                        app:resize_mode="fit" />
+
+                    <ImageView
+                        android:id="@+id/ivPreviewFrame"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="fitCenter"
+                        android:visibility="gone"
+                        android:contentDescription="Video Filter Preview" />
+
+                    <!-- No video placeholder -->
+                    <LinearLayout
+                        android:id="@+id/placeholderLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:background="?attr/colorSurfaceVariant"
+                        android:visibility="visible">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/no_video_loaded"
+                            android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                        <Button
+                            android:id="@+id/btnLoadVideoPlaceholder"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:text="@string/load_video" />
+
+                    </LinearLayout>
+                </FrameLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Load buttons -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:cardBackgroundColor="?attr/colorSurface">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/load_video_1"
-                    android:layout_marginEnd="8dp" />
+                    android:orientation="horizontal"
+                    android:padding="8dp"
+                    android:gravity="center">
 
-                <Button
-                    android:id="@+id/btnLoadVideo2"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/load_video_2"
-                    android:layout_marginStart="8dp" />
+                    <Button
+                        android:id="@+id/btnLoadVideo1"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/load_video_1"
+                        android:layout_marginEnd="4dp" />
 
-            </LinearLayout>
+                    <Button
+                        android:id="@+id/btnLoadVideo2"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/load_video_2"
+                        android:layout_marginStart="4dp" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Video info card -->
             <com.google.android.material.card.MaterialCardView
@@ -244,6 +276,35 @@
                         android:layout_marginTop="8dp"
                         android:text="@string/remove_audio" />
 
+                    <!-- Export Mode -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/export_mode"
+                        android:textAppearance="?attr/textAppearanceLabelMedium"
+                        android:layout_marginTop="8dp" />
+
+                    <RadioGroup
+                        android:id="@+id/rgExportMode"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.radiobutton.MaterialRadioButton
+                            android:id="@+id/rbExportNew"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/export_new_file"
+                            android:checked="true" />
+
+                        <com.google.android.material.radiobutton.MaterialRadioButton
+                            android:id="@+id/rbExportReplace"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/export_replace_original" />
+
+                    </RadioGroup>
+
                     <!-- Estimated Size -->
                     <TextView
                         android:id="@+id/tvEstimatedSize"
@@ -253,6 +314,71 @@
                         android:text="@string/estimated_size"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
                         android:textColor="?attr/colorPrimary" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Filters card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardFilters"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:visibility="gone"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Filtry wideo"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:layout_marginBottom="8dp" />
+
+                    <!-- Grayscale -->
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/cbGrayscale"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Odcienie szarości" />
+
+                    <!-- Brightness -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Jasność"
+                        android:textAppearance="?attr/textAppearanceLabelMedium"
+                        android:layout_marginTop="8dp" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderBrightness"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:valueFrom="-1.0"
+                        android:valueTo="1.0"
+                        android:value="0.0" />
+
+                    <!-- Contrast -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Kontrast"
+                        android:textAppearance="?attr/textAppearanceLabelMedium"
+                        android:layout_marginTop="8dp" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderContrast"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:valueFrom="-2.0"
+                        android:valueTo="2.0"
+                        android:value="1.0" />
 
                 </LinearLayout>
 
@@ -283,6 +409,7 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:baselineAligned="false"
                         android:orientation="horizontal">
 
                         <com.google.android.material.textfield.TextInputLayout
@@ -322,6 +449,7 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:baselineAligned="false"
                         android:orientation="horizontal"
                         android:layout_marginTop="8dp">
 
@@ -388,6 +516,7 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:baselineAligned="false"
                         android:orientation="horizontal">
 
                         <com.google.android.material.textfield.TextInputLayout
@@ -425,12 +554,74 @@
 
                     </LinearLayout>
 
+                    <com.google.android.material.slider.RangeSlider
+                        android:id="@+id/rangeSliderTrim"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:valueFrom="0.0"
+                        android:valueTo="100.0"
+                        app:values="@array/initial_range_values" />
+
                     <TextView
                         android:id="@+id/tvDuration"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Quick Actions Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardQuickActions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:visibility="gone"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Szybkie akcje"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:layout_marginBottom="8dp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/btnQuickTrim"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/action_trim_4s"
+                            android:layout_marginEnd="4dp"
+                            android:textSize="12sp" />
+
+                        <Button
+                            android:id="@+id/btnQuickCompress"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/action_compress"
+                            android:layout_marginStart="4dp"
+                            android:textSize="12sp" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
 
@@ -487,37 +678,63 @@
             <!-- Process button -->
             <Button
                 android:id="@+id/btnProcess"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="24dp"
+                android:visibility="gone"
+                android:text="@string/process_and_export"
+                android:textSize="18sp"
+                app:cornerRadius="12dp" />
+
+            <!-- Progress -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/layoutProgress"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:visibility="gone"
-                android:text="@string/process_and_export" />
+                app:cardCornerRadius="8dp"
+                app:cardElevation="4dp"
+                app:strokeWidth="2dp"
+                app:strokeColor="@color/status_processing">
 
-            <!-- Progress -->
-            <LinearLayout
-                android:id="@+id/layoutProgress"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginTop="12dp"
-                android:visibility="gone">
-
-                <com.google.android.material.progressindicator.LinearProgressIndicator
-                    android:id="@+id/progressBar"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    app:trackThickness="6dp"
-                    android:indeterminate="true" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
-                <TextView
-                    android:id="@+id/tvProgressStatus"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="@string/processing"
-                    android:textAppearance="?attr/textAppearanceBodySmall" />
+                    <TextView
+                        android:id="@+id/tvProgressStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:text="@string/processing"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textStyle="bold" />
 
-            </LinearLayout>
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:id="@+id/progressBar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:trackThickness="8dp"
+                        app:trackCornerRadius="4dp"
+                        android:indeterminate="true" />
+
+                    <Button
+                        android:id="@+id/btnCancel"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="end"
+                        android:layout_marginTop="8dp"
+                        android:text="Anuluj"
+                        android:textColor="?attr/colorError" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
 

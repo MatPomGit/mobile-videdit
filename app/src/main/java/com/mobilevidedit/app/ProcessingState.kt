@@ -7,8 +7,8 @@ sealed class ProcessingState {
     /** No processing is happening right now. */
     object Idle : ProcessingState()
 
-    /** Processing is in progress; [message] is a short human-readable status. */
-    data class Processing(val message: String) : ProcessingState()
+    /** Processing is in progress; [message] is a short human-readable status, [progress] is 0-100. */
+    data class Processing(val message: String, val progress: Int = -1) : ProcessingState()
 
     /** Processing finished successfully; [outputPath] is the file path of the result. */
     data class Success(val outputPath: String) : ProcessingState()

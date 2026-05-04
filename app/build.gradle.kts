@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.work.runtime.ktx)
     implementation(files("libs/ffmpeg-kit-full-gpl-6.0-2.LTS.aar"))
     implementation("com.arthenica:smart-exception-java:0.2.1")
 }

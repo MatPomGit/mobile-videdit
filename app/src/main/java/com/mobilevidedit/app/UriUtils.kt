@@ -32,6 +32,25 @@ object UriUtils {
         }
     }
 
+    /**
+     * Copy the content of the file at [filePath] back to the content [uri].
+     * Returns true on success, false on error.
+     */
+    fun saveFileToUri(context: Context, filePath: String, uri: Uri): Boolean {
+        return try {
+            val srcFile = File(filePath)
+            context.contentResolver.openOutputStream(uri, "rwt")?.use { output ->
+                srcFile.inputStream().use { input ->
+                    input.copyTo(output)
+                }
+            }
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
     private fun getExtensionFromUri(context: Context, uri: Uri): String? {
         val mimeType = context.contentResolver.getType(uri) ?: return null
         return when (mimeType) {
