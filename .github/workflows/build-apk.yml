@@ -9,6 +9,17 @@ on:
     branches: [ "main", "master" ]
   # Umożliwia ręczne uruchomienie z poziomu GitHub Actions.
   workflow_dispatch:
+    inputs:
+      publish_prerelease:
+        description: "Opublikuj debug APK jako trwały techniczny prerelease"
+        required: true
+        default: false
+        type: boolean
+      release_tag:
+        description: "Tag wydania, np. mobile-videdit-v1.0-rc1; wymagany przy publikacji"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   build:
@@ -51,7 +62,68 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          retention-days: 7
+          retention-days: 3
           name: app-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+  publish-prerelease:
+    name: Publish technical prerelease
+    needs: build
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_prerelease }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Validate release tag
+        shell: bash
+        run: |
+          test -n "${{ inputs.release_tag }}" || {
+            echo "::error::release_tag is required when publish_prerelease=true"
+            exit 2
+          }
+
+      - name: Download APK from this workflow run
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug-apk
+          path: release
+
+      - name: Generate SHA-256 manifest
+        shell: bash
+        run: |
+          cd release
+          sha256sum app-debug.apk > SHA256SUMS.txt
+
+      - name: Publish GitHub prerelease
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          target_commitish: ${{ github.sha }}
+          name: "Mobile Video Editor technical prerelease"
+          prerelease: true
+          body: |
+            Technical debug snapshot of the current repository state.
+            This release is intended for reproducible evaluation and testing, not production distribution.
+          files: |
+            release/app-debug.apk
+            release/SHA256SUMS.txt
+
+      - name: Delete transient Actions artifacts
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --paginate \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.workflow_run.id == ${{ github.run_id }}) | .id' \
+          | while read -r artifact_id; do
+              [ -z "$artifact_id" ] && continue
+              gh api --method DELETE \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "repos/${GITHUB_REPOSITORY}/actions/artifacts/$artifact_id"
+            done
